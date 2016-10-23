@@ -3,7 +3,7 @@ import cvxopt as opt
 from cvxopt import blas, solvers
 solvers.options['show_progress'] = False
 
-def optimal_portfolio_quad(returns):
+def optimal_portfolio_quad(returns,frontier=False):
     n = len(returns)
     returns = np.asmatrix(returns)
     
@@ -30,4 +30,7 @@ def optimal_portfolio_quad(returns):
     x1 = np.sqrt(m1[2] / m1[0])
     # CALCULATE THE OPTIMAL PORTFOLIO
     wt = solvers.qp(opt.matrix(x1 * S), -pbar, G, h, A, b)['x']
-    return list(wt)
+    if frontier == True:
+        return list(wt), list(m1)
+    else:
+        return list(wt)
