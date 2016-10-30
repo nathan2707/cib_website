@@ -33,15 +33,39 @@ class Portfolio:
         self.net_expectation = np.mean(self.historical_returns)
         #actual
         self.daily_values = calculate_values(assets,self.historical_returns,start_date,all_dates)
-                
-    def optimal_portfolio(self):
+    
+    def get_values(self):
+        return self.daily_values
+    def get_covariance_matrix(self):
+        return self.covariance_matrix
+    def get_historical_returns(self):
+        return pd.Series(self.historical_returns,index=self.historical_dates)
+    def get_variance(self):
+        return self.net_variance(self)
+    def get_historical_expectation(self):
+        return self.net_expectation
+    def get_tickers(self):
+        return self.symbols    
+    def get_optimal_portfolio(self):
         #looking back one year only. subject to change
         start_index = len(self.returns)-253
         end_index = len(self.returns)-1
         return_grid = self.returns_grid[:,start_index:end_index]
         weights, poly = Markowitz.optimal_portfolio_quad(return_grid,frontier=True)
         return {'weights':weights,'curve':poly}
-    
+    def get_current_asset_allocation(self):
+        for k in range(len(self.all_dates)-1,0,-1):
+            if (pd.Timestamp(self.start_date).to_datetime() - self.all_dates[k].to_datetime()).days == 0:
+                grid = self.returns_grid[0:len(self.returns_grid),k:-1]
+        current_value = self.daily_values[-1]
+        current_weights = []
+        for i in range(np.shape(grid)[0]):
+            weight_i = self.weights[i]
+            for j in range(np.shape(grid)[1]):
+                weight_i = weight_i * (1+grid[i][j]/100)
+            current_weights.append(weight_i/current_value)
+        return current_weights
+                
     def compile_portfolio(self):
         in_prices = []
         directions = []

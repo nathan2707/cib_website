@@ -19,6 +19,7 @@ def start_manager_update_process(p):
   
     latest_portfolio = manager_portfolio_update(p)
     save_new_portfolio(latest_portfolio)
+    return latest_portfolio
 
 def manager_portfolio_update(p):
     tickers = p[0]
@@ -44,10 +45,11 @@ def manager_data_update(tickers):
     df = pd.DataFrame.from_csv("returns_data.csv")
     tickers = set(tickers)
     new_tickers = list(tickers - set(df.columns))
-    new_columns = web.DataReader(new_tickers,'yahoo',datetime.datetime(2010, 1, 1))['Close']
-    new_columns = new_columns.pct_change()[1:len(new_columns)]
-    df = df.join(new_columns,how='outer')
-    df.to_csv("returns_data.csv")
+    if len(new_tickers) > 0:
+        new_columns = web.DataReader(new_tickers,'yahoo',datetime.datetime(2010, 1, 1))['Close']
+        new_columns = new_columns.pct_change()[1:len(new_columns)]
+        df = df.join(new_columns,how='outer')
+        df.to_csv("returns_data.csv")
     return df
 
 def save_new_portfolio(latest_portfolio):
