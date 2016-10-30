@@ -32,7 +32,7 @@ class Portfolio:
         self.net_variance = np.dot(self.weights.T,np.dot(self.covariance_matrix,self.weights))
         self.net_expectation = np.mean(self.historical_returns)
         #actual
-        self.daily_values = calculate_profits(assets,self.historical_returns,start_date,all_dates)
+        self.daily_values = calculate_values(assets,self.historical_returns,start_date,all_dates)
                 
     def optimal_portfolio(self):
         #looking back one year only. subject to change
@@ -51,22 +51,27 @@ class Portfolio:
         compilation = Portfolio_Compiled(self.symbols,self.start_date,self.weights,in_prices,directions,self.daily_values,self.net_variance,self.net_expectation,self.historical_dates)
         return compilation
 
-def calculate_profits(assets,historical_returns,start_date,all_dates):
+def calculate_values(assets,historical_returns,start_date,all_dates):
         #calculate first return taking into account price at which PM entered position
         first_return = 0
         for asset in assets:
-            first_price = web.DataReader(asset.symbol,'yahoo',start_date)['Close'][0]
+            first_date = start_date - datetime.timedelta(1)
+            first_price = web.DataReader(asset.symbol,'yahoo',first_date)['Close'][0]
             r = 100*(first_price - asset.in_price)/asset.in_price
             if asset.direction != 'long':
                 r = -r
             first_return = first_return + r
         #find index of first date
         for i in range(len(all_dates)-1,0,-1):
-            if (start_date - all_dates[i].to_datetime()).days == 0:
-                return np.insert(historical_returns[i:len(historical_returns)],0,first_return)    
-    
-    
-    
+            if (pd.Timestamp(start_date).to_datetime() - all_dates[i].to_datetime()).days == 0:
+                returns = np.insert(historical_returns[i:len(historical_returns)],0,first_return)
+                roll = 1
+                values = []
+                for i in range(len(returns)):
+                    roll = roll * (1 + returns[i])
+                    values.append(roll)
+                return values
+                    
 class Portfolio_Compiled:
     def __init__(self,tickers,start_date,initial_weights,in_prices,directions,returns,net_variance,net_expectation,all_dates):
         self.tickers = tickers

@@ -12,6 +12,7 @@ start_daily_update_process()
         latest_saved_portfolio = pull_latest_portfolio()
         df = daily_data_updates()
         latest_portfolio = daily_portfolio_update(latest_saved_portfolio,df)
+        update_last_portfolio(latest_portfolio)
 
     def daily_portfolio_update(latest_saved_portfolio,return_grid):
         df = return_grid
@@ -32,9 +33,9 @@ start_daily_update_process()
         return df
 
     def update_last_portfolio(latest_portfolio):
+        all_portfolios = pull_old_portfolios()
+        all_portfolios[len(all_portfolios)-1] = latest_portfolio.compile_portfolio()
         with open('portfolio.txt', 'wb') as f:
-            all_portfolios = pickle.load(f)
-            all_portfolios[len(all_portfolios)-1] = latest_portfolio.compile_portfolio()
             pickle.dump(all_portfolios, f)
 
     #use this to plot the historical performance of the fund, for whatever asset allocation
