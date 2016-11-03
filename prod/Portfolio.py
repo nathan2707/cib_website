@@ -41,7 +41,7 @@ class Portfolio:
     def get_historical_returns(self):
         return pd.Series(self.historical_returns,index=self.historical_dates)
     def get_variance(self):
-        return self.net_variance(self)
+        return self.net_variance
     def get_historical_expectation(self):
         return self.net_expectation
     def get_tickers(self):
@@ -86,6 +86,7 @@ def calculate_values(assets,historical_returns,start_date,all_dates):
                 r = -r
             first_return = first_return + r
         #find index of first date
+        values = []
         for i in range(len(all_dates)-1,0,-1):
             if (pd.Timestamp(start_date).to_datetime() - all_dates[i].to_datetime()).days == 0:
                 returns = np.insert(historical_returns[i:len(historical_returns)],0,first_return)
@@ -95,6 +96,7 @@ def calculate_values(assets,historical_returns,start_date,all_dates):
                     roll = roll * (1 + returns[i])
                     values.append(roll)
                 return values
+        return values
                     
 class Portfolio_Compiled:
     def __init__(self,tickers,start_date,initial_weights,in_prices,directions,returns,net_variance,net_expectation,all_dates):
@@ -108,10 +110,19 @@ class Portfolio_Compiled:
         self.net_expectation = net_expectation
         self.historical_dates = all_dates
     
-    def uncompile(self,df):
+    def uncompile_and_update(self,df):
         positions = []
         for i in range(self.tickers):
                 pos = Position(self.tickers[i],df[self.tickers[i]],self.directions[i],self.in_prices[i],self.initial_weights[i])
                 positions.append(pos)
         portfolio = Portfolio(positions,self.start_date,self.historical_dates)
-        return portfolio      
+        return portfolio
+    
+    def uncompile(self):
+        df = pd.DataFrame.from_csv("returns_data.csv")
+        positions = []
+        for i in range(len(self.tickers)):
+                pos = Position(self.tickers[i],df[self.tickers[i]],self.directions[i],self.in_prices[i],self.initial_weights[i])
+                positions.append(pos)
+        portfolio = Portfolio(positions,self.start_date,self.historical_dates)
+        return portfolio

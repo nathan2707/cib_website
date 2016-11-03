@@ -16,7 +16,7 @@ start_daily_update_process()
 
     def daily_portfolio_update(latest_saved_portfolio,return_grid):
         df = return_grid
-        latest_portfolio = latest_saved_portfolio.uncompile(df)
+        latest_portfolio = latest_saved_portfolio.uncompile_and_update(df)
         return latest_portfolio
 
     def pull_latest_portfolio():
