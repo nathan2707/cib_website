@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import Portfolio
 from dateutil import rrule
 import datetime

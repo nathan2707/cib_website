@@ -3,7 +3,6 @@ import pandas as pd
 import datetime
 import Markowitz
 import numpy as np
-import math
 
 class Position:
     def __init__(self,symbol,returns,direction,in_price,weight):
@@ -93,7 +92,7 @@ def calculate_values(assets,historical_returns,start_date,all_dates):
                 roll = 1
                 values = []
                 for i in range(len(returns)):
-                    roll = roll * (1 + returns[i])
+                    roll = roll * (1 + returns[i]/100)
                     values.append(roll)
                 return values
         return values
@@ -112,7 +111,7 @@ class Portfolio_Compiled:
     
     def uncompile_and_update(self,df):
         positions = []
-        for i in range(self.tickers):
+        for i in range(len(self.tickers)):
                 pos = Position(self.tickers[i],df[self.tickers[i]],self.directions[i],self.in_prices[i],self.initial_weights[i])
                 positions.append(pos)
         portfolio = Portfolio(positions,self.start_date,self.historical_dates)
