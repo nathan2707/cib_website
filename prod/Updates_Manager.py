@@ -7,7 +7,14 @@ sys.path.append('../prod/')
 from Portfolio import Portfolio, Position
 import os
 
-def start_manager_update_process(p):
+#The front end should pass p of the following format:
+#list of 4 elements:
+#tickers = p[0] - list
+#number_shares = p[1] - list
+#costs = p[2] - list
+#cash = p[3]
+
+def start_manager_update_process(p,start_date):
     if os.path.isfile('./portfolio.txt') is False:
         # a  few requirements to set up the data pipeline
         df = web.DataReader(['GOOGL','GLD'],'yahoo',datetime.datetime(2010, 1, 1))['Close']
@@ -17,27 +24,27 @@ def start_manager_update_process(p):
         with open('portfolio.txt','wb') as f:
             pickle.dump([],f)
   
-    latest_portfolio = manager_portfolio_update(p)
+    latest_portfolio = manager_portfolio_update(p,start_date)
     save_new_portfolio(latest_portfolio)
     return latest_portfolio
 
-def manager_portfolio_update(p):
+def manager_portfolio_update(p,start_date=datetime.date.today()):
     tickers = p[0]
-    weights = p[1]
+    number_shares = p[1]
     costs = p[2]
+    cash = p[3]
     df = manager_data_update(tickers)
     df = df.dropna(thresh=len(tickers), axis=0) #this line restrict historical calculations to data points shared by all equities
     all_dates = df.index
     assets = []
     for i in range(len(tickers)):
         symbol = tickers[i]
-        w = weights[i]
+        n_shares = number_shares[i]
         in_price = costs[i]
         returns = df[symbol]
-        direction_pos = direction(w)
-        assets.append(Position(symbol,returns,direction_pos,in_price,w))
-    start_date = datetime.date.today()
-    latest_portfolio = Portfolio(assets,start_date,all_dates)
+        direction_pos = direction(n_shares)
+        assets.append(Position(symbol,returns,direction_pos,in_price,n_shares))
+    latest_portfolio = Portfolio(assets,start_date,all_dates,cash)
     return latest_portfolio
     
 #initially load csv with one series going back at least to 2010

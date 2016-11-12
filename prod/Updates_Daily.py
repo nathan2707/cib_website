@@ -43,5 +43,5 @@ def pull_old_portfolios():
         return var
 
 
-
+#Run everyday after market closes
 start_daily_update_process()
