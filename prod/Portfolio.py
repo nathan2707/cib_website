@@ -3,9 +3,13 @@ import pandas as pd
 import datetime
 import Markowitz
 import numpy as np
+import math
+import pickle
+
+#Supports long only for now.
 
 class Position:
-    def __init__(self,symbol,returns,direction,in_price,n_shares):
+    def __init__(self,symbol,returns,direction,in_price,n_shares,returns_sp):
         #format for dates: "YYYY-MM-dd"
         self.symbol = symbol
         self.returns = returns
@@ -16,6 +20,11 @@ class Position:
             self.returns *= 100
         else:
             self.returns *= -100
+        df = pd.concat([returns, returns_sp], axis=1)
+        df = df.dropna(thresh=2, axis=0)
+        df = df.pct_change()[1:len(df)] * 100
+        c = df.cov()
+        self.beta = c.iloc[0][1] / c.iloc[1][1]
             
 class Portfolio:
     def __init__(self,assets,start_date,all_dates,money):
@@ -28,7 +37,6 @@ class Portfolio:
             total_amount = total_amount + asset.in_price * asset.n_shares
         self.weights = np.array([(asset.in_price * asset.n_shares)/total_amount for asset in self.positions])
         self.cash = money - total_amount
-
         #historical
         self.historical_dates = all_dates
         self.historical_returns = np.dot(self.weights.transpose(),self.returns_grid)
@@ -51,11 +59,15 @@ class Portfolio:
             i = i + 1
         weights.append(self.cash/total_amount)
         return dict(zip(symbols, weights))
-
     def get_values(self):
         return self.daily_values
-    def get_covariance_matrix(self):
-        return self.covariance_matrix
+    def get_beta(self):
+        beta_pos = [pos.beta for pos in self.positions]
+        return np.dot(beta_pos,self.weights)
+    def get_correlation_matrix(self):
+        return np.corrcoef(self.returns_grid)
+    def get_sharpe_ratio(self):
+        return self.net_expectation/math.sqrt(self.net_variance)
     def get_historical_returns(self):
         return pd.Series(self.historical_returns,index=self.historical_dates)
     def get_variance(self):
@@ -71,15 +83,56 @@ class Portfolio:
         return_grid = self.returns_grid[:,start_index:end_index]
         weights, poly = Markowitz.optimal_portfolio_quad(return_grid,frontier=True)
         return {'weights':weights,'curve':poly}
-                
     def compile_portfolio(self):
         in_prices = []
         directions = []
+        shares = []
         for i in range(len(self.positions)):
             in_prices.append(self.positions[i].in_price)
             directions.append(self.positions[i].direction)
-        compilation = Portfolio_Compiled(self.symbols,self.start_date,self.weights,in_prices,directions,self.daily_values,self.net_variance,self.net_expectation,self.historical_dates,self.cash)
+            shares.append(self.positions[i].n_shares)
+        compilation = Portfolio_Compiled(self.symbols,shares,self.start_date,in_prices,directions,self.historical_dates,self.cash)
         return compilation
+    def find_YTD_performance(self):
+        with open('portfolio.txt', 'rb') as f:
+            all_portfolios = pickle.load(f)
+        values = []
+        i = len(all_portfolios)-1
+        while len(values) < 252:
+            port = all_portfolios[i]
+            values.append(port.daily_values)
+            i = i - 1
+            if i < 0:
+                val_year_ago = 10000
+                val_today = values[0]
+                ytd_perf = (val_today - val_year_ago) / val_year_ago
+                return ytd_perf
+        val_year_ago = values[251]
+        val_today = values[0]
+        ytd_perf = (val_today - val_year_ago) / val_year_ago
+        return ytd_perf
+    def get_alpha(self):
+        df = pd.DataFrame.from_csv("returns_data.csv")
+        prices_market = list(df['^GSPC'])[len(df)-252:len(df)]
+        Rm = 1
+        for rm in prices_market:
+            Rm = Rm * (1 + rm)
+        Rm = Rm - 1
+        risk_free_rate = .007
+        returns_cib = self.find_YTD_performance()
+        beta = self.get_beta()
+        alpha = returns_cib - risk_free_rate - (Rm - risk_free_rate) * beta
+        return alpha
+    #backtested for now. will link to actual account history after a while of trading.
+    def get_information_ratio(self):
+        df = pd.DataFrame.from_csv("returns_data.csv")
+        returns_market = np.array(df.iloc[-254:-1]["^GSPC"]*100)
+        returns_port = self.historical_returns[-254:-1]
+        sd_diff = np.std(returns_port-returns_market)
+        exp_diff = np.mean(returns_port)-np.mean(returns_market)
+        return exp_diff/sd_diff
+
+
 
 def calculate_values(assets,start_date,first_amount):
     tickers = [asset.symbol for asset in assets]
@@ -93,22 +146,19 @@ def calculate_values(assets,start_date,first_amount):
     return values
                     
 class Portfolio_Compiled:
-    def __init__(self,tickers,start_date,initial_weights,in_prices,directions,returns,net_variance,net_expectation,all_dates,money):
+    def __init__(self,tickers,shares,start_date,in_prices,directions,all_dates,money):
         self.tickers = tickers
+        self.shares = shares
         self.start_date = start_date
         self.in_prices = in_prices
         self.directions = directions
-        self.initial_weights = initial_weights
-        self.net_returns = returns
-        self.net_variance = net_variance
-        self.net_expectation = net_expectation
         self.historical_dates = all_dates
         self.cash = money
     
     def uncompile_and_update(self,df):
         positions = []
         for i in range(len(self.tickers)):
-                pos = Position(self.tickers[i],df[self.tickers[i]],self.directions[i],self.in_prices[i],self.initial_weights[i])
+                pos = Position(self.tickers[i],df[self.tickers[i]],self.directions[i],self.in_prices[i],self.shares[i],df['^GSPC'])
                 positions.append(pos)
         portfolio = Portfolio(positions,self.start_date,self.historical_dates,self.cash)
         return portfolio
@@ -117,7 +167,7 @@ class Portfolio_Compiled:
         df = pd.DataFrame.from_csv("returns_data.csv")
         positions = []
         for i in range(len(self.tickers)):
-                pos = Position(self.tickers[i],df[self.tickers[i]],self.directions[i],self.in_prices[i],self.initial_weights[i])
+                pos = Position(self.tickers[i],df[self.tickers[i]],self.directions[i],self.in_prices[i],self.shares[i],df['^GSPC'])
                 positions.append(pos)
         portfolio = Portfolio(positions,self.start_date,self.historical_dates,self.cash)
         return portfolio

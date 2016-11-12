@@ -12,7 +12,6 @@ import os
 #tickers = p[0] - list
 #number_shares = p[1] - list
 #costs = p[2] - list
-#cash = p[3]
 
 def start_manager_update_process(p,start_date):
     if os.path.isfile('./portfolio.txt') is False:
@@ -32,7 +31,13 @@ def manager_portfolio_update(p,start_date=datetime.date.today()):
     tickers = p[0]
     number_shares = p[1]
     costs = p[2]
-    cash = p[3]
+    old_ports = pull_old_portfolios()
+    if len(old_ports) == 0:
+        cash = 10000
+    else:
+        last_port = old_ports[-1].uncompile()
+        cash = last_port.cash + last_port.daily_values[-1]
+    #replace by querying some database for the current (intra day) price instead of the last closing price for value at which you sold.
     df = manager_data_update(tickers)
     df = df.dropna(thresh=len(tickers), axis=0) #this line restrict historical calculations to data points shared by all equities
     all_dates = df.index
@@ -42,8 +47,9 @@ def manager_portfolio_update(p,start_date=datetime.date.today()):
         n_shares = number_shares[i]
         in_price = costs[i]
         returns = df[symbol]
+        returns_sp = df['^GSPC']
         direction_pos = direction(n_shares)
-        assets.append(Position(symbol,returns,direction_pos,in_price,n_shares))
+        assets.append(Position(symbol,returns,direction_pos,in_price,n_shares,returns_sp))
     latest_portfolio = Portfolio(assets,start_date,all_dates,cash)
     return latest_portfolio
     
