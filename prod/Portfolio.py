@@ -16,13 +16,9 @@ class Position:
         self.direction = direction
         self.in_price = in_price
         self.n_shares = n_shares
-        if direction == "long":
-            self.returns *= 100
-        else:
-            self.returns *= -100
         df = pd.concat([returns, returns_sp], axis=1)
         df = df.dropna(thresh=2, axis=0)
-        df = df.pct_change()[1:len(df)] * 100
+        df = df * 100
         c = df.cov()
         self.beta = c.iloc[0][1] / c.iloc[1][1]
             
@@ -47,16 +43,15 @@ class Portfolio:
         self.daily_values = calculate_values(assets,start_date,total_amount)
 
     def get_asset_allocation(self):
-        current_prices = web.DataReader([asset.symbol for asset in self.positions], 'yahoo', datetime.date.today())['Open']
+        current_prices = web.DataReader([asset.symbol for asset in self.positions], 'yahoo', datetime.date.today()-datetime.timedelta(1))['Open']
         total_amount = self.cash
         for asset in self.positions:
-            total_amount = total_amount + current_prices[asset.symbol] * asset.n_shares
-        symbols = self.symbols.append("cash")
+            total_amount = total_amount + current_prices.iloc[0][asset.symbol] * asset.n_shares
+        symbols = self.symbols
+        symbols.append("cash")
         weights = []
-        i = 0
         for asset in self.positions:
-            weights[i] = (current_prices[asset.symbol] * asset.n_shares)/total_amount
-            i = i + 1
+            weights.append((current_prices.iloc[0][asset.symbol] * asset.n_shares)/total_amount)
         weights.append(self.cash/total_amount)
         return dict(zip(symbols, weights))
     def get_values(self):
@@ -99,16 +94,16 @@ class Portfolio:
         values = []
         i = len(all_portfolios)-1
         while len(values) < 252:
-            port = all_portfolios[i]
-            values.append(port.daily_values)
+            port = all_portfolios[i].uncompile()
+            values.extend(port.daily_values)
             i = i - 1
             if i < 0:
                 val_year_ago = 10000
                 val_today = values[0]
                 ytd_perf = (val_today - val_year_ago) / val_year_ago
                 return ytd_perf
-        val_year_ago = values[251]
-        val_today = values[0]
+        val_year_ago = values[-253]
+        val_today = values[-1]
         ytd_perf = (val_today - val_year_ago) / val_year_ago
         return ytd_perf
     def get_alpha(self):
@@ -131,8 +126,6 @@ class Portfolio:
         sd_diff = np.std(returns_port-returns_market)
         exp_diff = np.mean(returns_port)-np.mean(returns_market)
         return exp_diff/sd_diff
-
-
 
 def calculate_values(assets,start_date,first_amount):
     tickers = [asset.symbol for asset in assets]
