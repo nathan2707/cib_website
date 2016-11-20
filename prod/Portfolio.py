@@ -73,8 +73,8 @@ class Portfolio:
         return self.symbols    
     def get_optimal_portfolio(self):
         #looking back one year only. subject to change
-        start_index = len(self.returns)-253
-        end_index = len(self.returns)-1
+        start_index = len(self.historical_returns)-253
+        end_index = len(self.historical_returns)-1
         return_grid = self.returns_grid[:,start_index:end_index]
         weights, poly = Markowitz.optimal_portfolio_quad(return_grid,frontier=True)
         return {'weights':weights,'curve':poly}
@@ -126,6 +126,23 @@ class Portfolio:
         sd_diff = np.std(returns_port-returns_market)
         exp_diff = np.mean(returns_port)-np.mean(returns_market)
         return exp_diff/sd_diff
+    def get_exposures(self,weights):
+        funds = ["XLY", "XLP", "XLE", "XLF", "XLV", "XLI", "XLB", "XLK", "XLU"]
+        prices_factors = web.DataReader(funds, "yahoo", self.start_date - datetime.timedelta(1))["Close"]
+        returns_factors = prices_factors.pct_change()[1:len(prices_factors)] * 100
+        returns_factors["Intercept"] = np.ones(len(returns_factors))
+        A = np.array(returns_factors)
+        grid = self.returns_grid.T
+        returns_pos = grid[len(grid)-len(returns_factors)-1:-1]
+        w = np.array(weights).T
+        Y = returns_pos.dot(w) * 100
+        beta = np.linalg.lstsq(A, Y)[0]
+        print(len(beta))
+        beta = list(beta[1:-1])
+        factors = ["Consumer Discretionary","Consumer Staples","Energy","Financials","Healthcare","Industrials","Materials",\
+                   "Technology","Utilities"]
+        return dict(zip(factors, beta))
+
 
 def calculate_values(assets,start_date,first_amount):
     tickers = [asset.symbol for asset in assets]
@@ -164,28 +181,3 @@ class Portfolio_Compiled:
                 positions.append(pos)
         portfolio = Portfolio(positions,self.start_date,self.historical_dates,self.cash)
         return portfolio
-
-##OLD/UNUSED Functions
-
-def calculate_values_old(assets, historical_returns, start_date, all_dates):
-    # calculate first return taking into account price at which PM entered position
-    first_return = 0
-    for asset in assets:
-        first_date = start_date - datetime.timedelta(1)
-        first_price = web.DataReader(asset.symbol, 'yahoo', first_date)['Close'][0]
-        r = 100 * (first_price - asset.in_price) / asset.in_price
-        if asset.direction != 'long':
-            r = -r
-        first_return = first_return + r
-    # find index of first date
-    values = []
-    for i in range(len(all_dates) - 1, 0, -1):
-        if (pd.Timestamp(start_date).to_datetime() - all_dates[i].to_datetime()).days == 0:
-            returns = np.insert(historical_returns[i:len(historical_returns)], 0, first_return)
-            roll = 1
-            values = []
-            for i in range(len(returns)):
-                roll = roll * (1 + returns[i] / 100)
-                values.append(roll)
-            return values
-    return values
