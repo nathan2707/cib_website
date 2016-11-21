@@ -40,7 +40,7 @@ class Portfolio:
         self.net_variance = np.dot(self.weights.T,np.dot(self.covariance_matrix,self.weights))
         self.net_expectation = np.mean(self.historical_returns)
         #actual
-        self.daily_values = calculate_values(assets,start_date,total_amount)
+        self.daily_values, self.values_dict = calculate_values(assets,start_date,total_amount)
 
     def get_asset_allocation(self):
         current_prices = web.DataReader([asset.symbol for asset in self.positions], 'yahoo', datetime.date.today()-datetime.timedelta(1))['Open']
@@ -55,7 +55,7 @@ class Portfolio:
         weights.append(self.cash/total_amount)
         return dict(zip(symbols, weights))
     def get_values(self):
-        return self.daily_values
+        return self.values_dict
     def get_beta(self):
         beta_pos = [pos.beta for pos in self.positions]
         return np.dot(beta_pos,self.weights)
@@ -146,12 +146,13 @@ def calculate_values(assets,start_date,first_amount):
     tickers = [asset.symbol for asset in assets]
     n_shares = [asset.n_shares for asset in assets]
     prices = web.DataReader(tickers, 'yahoo', start_date)['Close']
+    dates = [d.to_datetime() for d in prices.index]
     values = []
     values.append(first_amount)
     for i in range(len(prices)):
         if i != 0:
            values.append(np.dot(prices.iloc[[i]], n_shares)[0])
-    return values
+    return values, dict(zip(dates, values))
                     
 class Portfolio_Compiled:
     def __init__(self,tickers,shares,start_date,in_prices,directions,all_dates,money):

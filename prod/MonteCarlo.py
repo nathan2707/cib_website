@@ -13,7 +13,7 @@ import pandas as pd
 # (3) interactively pull probas from probability_of_perf(final_perf,goal,upside=True)
 
 class Simulation:
-    def __init__(self,portfolio,horizon=48,n_trials=1000000):
+    def __init__(self,portfolio,horizon=48,n_trials=1000):
         self.mu = portfolio.net_expectation
         self.sigma = math.sqrt(portfolio.net_variance)
         self.horizon = horizon
@@ -49,7 +49,7 @@ class Simulation:
         elif quartile == 2:
             #50% - median
             return self.perf_series_quartile2
-        else:
+        elif quartile == 3:
             #75%
             return self.perf_series_quartile3
 
