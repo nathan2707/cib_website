@@ -5,7 +5,7 @@ import numpy as np
 import math
 import pickle
 import portfolioopt as pfopt
-from Collections import OrderedDict
+import collections
 
 #Supports long only for now.
 
@@ -61,12 +61,13 @@ class Portfolio:
         for asset in self.positions:
             weights.append((current_prices.iloc[0][asset.symbol] * asset.n_shares)/total_amount)
         weights.append(self.cash/total_amount)
-        return OrderedDict(zip(symbols, weights))
+        return collections.OrderedDict(zip(symbols, weights))
     def get_shares(self):
         shares = []
         for pos in self.positions:
             shares.append(pos.n_shares)
-        return OrderedDict(zip(self.symbols, shares))
+        shares["Cash"] = self.cash
+        return collections.OrderedDict(zip(self.symbols, shares))
     def get_values(self):
         return self.values_dict
     def get_beta(self):
@@ -165,19 +166,22 @@ class Portfolio:
         exp_diff = np.mean(returns_port)-np.mean(returns_market)
         return exp_diff/sd_diff
     def get_exposures(self,weights):
-        returns_factors = 100*pd.DataFrame.from_csv("returns_data.csv")["XLY", "XLP", "XLE", "XLF", "XLV", "XLI", "XLB", "XLK", "XLU"]
+        returns_factors = pd.DataFrame.from_csv("returns_data.csv")
+        returns_factors = 100 * returns_factors.loc[:,["XLY", "XLP", "XLE", "XLF", "XLV", "XLI", "XLB", "XLK", "XLU"]]
         returns_factors["Intercept"] = np.ones(len(returns_factors))
         A = np.array(returns_factors)
         grid = self.returns_grid.T
         returns_pos = grid[len(grid)-len(returns_factors)-1:-1]
-        w = np.array(weights).T
+        w = []
+        for symb in self.symbols:
+            w.append(weights[symb])
+        w = np.array(w).T
         Y = returns_pos.dot(w) * 100
         beta = np.linalg.lstsq(A, Y)[0]
-        print(len(beta))
         beta = list(beta[1:-1])
         factors = ["Consumer Discretionary","Consumer Staples","Energy","Financials","Healthcare","Industrials","Materials",\
                    "Technology","Utilities"]
-        return OrderedDict(zip(factors, beta))
+        return collections.OrderedDict(zip(factors, beta))
 
 
 def calculate_values(assets,start_date,first_amount):
@@ -190,7 +194,7 @@ def calculate_values(assets,start_date,first_amount):
     for i in range(len(prices)):
         if i != 0:
            values.append(np.dot(prices.iloc[[i]], n_shares)[0])
-    return values, OrderedDict(zip(dates, values))
+    return values, collections.OrderedDict(zip(dates, values))
                     
 class Portfolio_Compiled:
     def __init__(self,tickers,shares,start_date,in_prices,directions,all_dates,money):
