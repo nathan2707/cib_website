@@ -171,12 +171,11 @@ class Portfolio:
         returns_factors["Intercept"] = np.ones(len(returns_factors))
         A = np.array(returns_factors)
         grid = self.returns_grid.T
-        returns_pos = grid[len(grid)-len(returns_factors)-1:-1]
         w = []
         for symb in self.symbols:
             w.append(weights[symb])
         w = np.array(w).T
-        Y = returns_pos.dot(w) * 100
+        Y = grid.dot(w) * 100
         beta = np.linalg.lstsq(A, Y)[0]
         beta = list(beta[1:-1])
         factors = ["Consumer Discretionary","Consumer Staples","Energy","Financials","Healthcare","Industrials","Materials",\

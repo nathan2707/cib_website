@@ -3,9 +3,10 @@ import Updates_Manager
 import MonteCarlo
 
 start_date = datetime.datetime(2015,10,3)
-P1 = (['GILD', 'GLD', 'GPS', 'OIL', 'XOM'],[10,12,6,8,9],[78.03,124.9,21.57,5.83,86.54],900)
+P1 = (['AAPL','MSFT','AMZN'],[10,12,6],[99.6,45.5,532.5],900)
 p = Updates_Manager.start_manager_update_process(P1,start_date)
-exp = p.get_exposures([0.2,0.2,0.2,0.2,0.2])
+dic = dict(zip(['AAPL','MSFT','AMZN'],[0.4,0.4,0.2]))
+exp = p.get_exposures(dic)
 
 
 print(p.get_variance())
