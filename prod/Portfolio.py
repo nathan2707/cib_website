@@ -1,10 +1,11 @@
 import pandas.io.data as web
 import pandas as pd
 import datetime
-import Markowitz
 import numpy as np
 import math
 import pickle
+import portfolioopt as pfopt
+from Collections import OrderedDict
 
 #Supports long only for now.
 
@@ -36,14 +37,21 @@ class Portfolio:
         #historical
         self.historical_dates = all_dates
         self.historical_returns = np.dot(self.weights.transpose(),self.returns_grid)
-        self.covariance_matrix = np.cov(self.returns_grid)
+        self.net_expectation = np.mean(100*self.historical_returns)
+        self.covariance_matrix = np.cov(self.returns_grid*100)
         self.net_variance = np.dot(self.weights.T,np.dot(self.covariance_matrix,self.weights))
-        self.net_expectation = np.mean(self.historical_returns)
         #actual
         self.daily_values, self.values_dict = calculate_values(assets,start_date,total_amount)
 
     def get_asset_allocation(self):
-        current_prices = web.DataReader([asset.symbol for asset in self.positions], 'yahoo', datetime.date.today()-datetime.timedelta(1))['Open']
+        weekno = datetime.datetime.today().weekday()
+        if weekno == 6:
+            date = datetime.date.today()-datetime.timedelta(2)
+        elif weekno == 5:
+            date = datetime.date.today() - datetime.timedelta(1)
+        else:
+            date = datetime.date.today()
+        current_prices = web.DataReader([asset.symbol for asset in self.positions], 'yahoo',date )['Open']
         total_amount = self.cash
         for asset in self.positions:
             total_amount = total_amount + current_prices.iloc[0][asset.symbol] * asset.n_shares
@@ -53,7 +61,12 @@ class Portfolio:
         for asset in self.positions:
             weights.append((current_prices.iloc[0][asset.symbol] * asset.n_shares)/total_amount)
         weights.append(self.cash/total_amount)
-        return dict(zip(symbols, weights))
+        return OrderedDict(zip(symbols, weights))
+    def get_shares(self):
+        shares = []
+        for pos in self.positions:
+            shares.append(pos.n_shares)
+        return OrderedDict(zip(self.symbols, shares))
     def get_values(self):
         return self.values_dict
     def get_beta(self):
@@ -70,14 +83,39 @@ class Portfolio:
     def get_historical_expectation(self):
         return self.net_expectation
     def get_tickers(self):
-        return self.symbols    
-    def get_optimal_portfolio(self):
-        #looking back one year only. subject to change
-        start_index = len(self.historical_returns)-253
-        end_index = len(self.historical_returns)-1
-        return_grid = self.returns_grid[:,start_index:end_index]
-        weights, poly = Markowitz.optimal_portfolio_quad(return_grid,frontier=True)
-        return {'weights':weights,'curve':poly}
+        return self.symbols
+    #ordered dictionary of forecast for expected returns: key = ticker, value = weight (out of 1)
+    def get_markowitz_analysis(self,expected_rets=False):
+        start_index = len(self.historical_returns) - 253
+        end_index = len(self.historical_returns) - 1
+        return_grid = self.returns_grid[:, start_index:end_index].T
+        returns = pd.DataFrame(return_grid) * 100
+        avgs = [np.mean(returns[col]) for col in returns.columns]
+        cov_mat = pd.DataFrame(self.covariance_matrix)
+        if expected_rets == False:
+            avg_rets = pd.Series(avgs, index=returns.columns)
+        else:
+            avg_rets = pd.Series(expected_rets.values(), index=returns.columns)
+        w_opt = pfopt.tangency_portfolio(cov_mat, avg_rets, allow_short=False)
+        ret_opt = (w_opt * avg_rets).sum()
+        std_opt = (w_opt * returns).sum(1).std()
+
+        smallest_target = max(min(avg_rets), 0)
+        biggest_target = max(avg_rets)
+        target_returns = np.arange(smallest_target, biggest_target, .0005)
+        X = []
+        Y = []
+        for yi in target_returns:
+            w = pfopt.markowitz_portfolio(cov_mat, avg_rets, yi)
+            ret = (w * avg_rets).sum()
+            std = (w * returns).sum(1).std()
+            Y.append(ret)
+            X.append(std)
+        coefs = np.polyfit(Y,X,2) #highest power first
+        curve = {"x2":coefs[0],"x":coefs[1],"b":coefs[2],"min_return":smallest_target,"max_return":biggest_target}
+        tangency_port = {'weights': dict(w_opt),'X':std_opt,'Y':ret_opt}
+        return (tangency_port,curve)
+
     def compile_portfolio(self):
         in_prices = []
         directions = []
@@ -139,7 +177,7 @@ class Portfolio:
         beta = list(beta[1:-1])
         factors = ["Consumer Discretionary","Consumer Staples","Energy","Financials","Healthcare","Industrials","Materials",\
                    "Technology","Utilities"]
-        return dict(zip(factors, beta))
+        return OrderedDict(zip(factors, beta))
 
 
 def calculate_values(assets,start_date,first_amount):
@@ -152,7 +190,7 @@ def calculate_values(assets,start_date,first_amount):
     for i in range(len(prices)):
         if i != 0:
            values.append(np.dot(prices.iloc[[i]], n_shares)[0])
-    return values, dict(zip(dates, values))
+    return values, OrderedDict(zip(dates, values))
                     
 class Portfolio_Compiled:
     def __init__(self,tickers,shares,start_date,in_prices,directions,all_dates,money):

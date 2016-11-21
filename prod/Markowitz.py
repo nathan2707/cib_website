@@ -6,7 +6,7 @@ solvers.options['show_progress'] = False
 def optimal_portfolio_quad(returns,frontier=False):
     n = len(returns)
     returns = np.asmatrix(returns)
-    N = 100
+    N = 10000
     mus = [10**(5.0 * t/N - 1.0) for t in range(N)]
     # Convert to cvxopt matrices
     S = opt.matrix(np.cov(returns))

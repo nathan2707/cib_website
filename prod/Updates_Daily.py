@@ -9,7 +9,14 @@ from Portfolio import Portfolio, Position
 def daily_data_update():
     df = pd.DataFrame.from_csv("returns_data.csv")
     tickers = df.columns
-    today_row = web.DataReader(tickers,'yahoo',datetime.date.today() - datetime.timedelta(days=1),datetime.date.today())['Close']
+    weekno = datetime.datetime.today().weekday()
+    if weekno == 6:
+        date = datetime.date.today() - datetime.timedelta(2)
+    elif weekno == 5:
+        date = datetime.date.today() - datetime.timedelta(1)
+    else:
+        date = datetime.date.today()
+    today_row = web.DataReader(tickers,'yahoo',date - datetime.timedelta(days=1),date)['Close']
     today_row = today_row.pct_change()[1:len(today_row)]
     df = df.append(today_row)
     df.to_csv("returns_data.csv")
