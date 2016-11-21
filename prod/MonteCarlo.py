@@ -13,12 +13,29 @@ import pandas as pd
 # (3) interactively pull probas from probability_of_perf(final_perf,goal,upside=True)
 
 class Simulation:
-    def __init__(self,portfolio,horizon=48,n_trials=1000):
-        self.mu = portfolio.net_expectation
-        self.sigma = math.sqrt(portfolio.net_variance)
+    #weights and forecasts are optional ordered dictionaries with tickers as keys
+    def __init__(self,portfolio,horizon=48,n_trials=1000, weights = 0, forecasts = 0):
         self.horizon = horizon
         self.n_trials = n_trials
-        self.trading_days, self.returns = monte_carlo_simulation(self.mu,self.sigma,self.n_trials,self.horizon)
+        if weights != 0:
+            weights = np.array(weights.values())
+            covariance_matrix = np.cov(portfolio.returns_grid)
+            self.sigma = math.sqrt(np.dot(weights.T, np.dot(covariance_matrix, weights)))
+            if forecasts == 0:
+                hist_returns = np.dot(weights.transpose(), portfolio.returns_grid)
+                self.mu = np.mean(hist_returns)
+            else:
+                forecasts = np.array(forecasts.values())
+                self.mu = weights.dot(forecasts)
+        else:
+            self.sigma = math.sqrt(portfolio.net_variance)
+            if forecasts == 0:
+                self.mu = portfolio.net_expectation
+            else:
+                forecasts = np.array(forecasts.values())
+                self.mu = portfolio.weights.dot(forecasts)
+
+        self.trading_days, self.returns = monte_carlo_simulation(self.mu, self.sigma, self.n_trials, self.horizon)
         self.final,self.stats,self.perf_series_quartile1,self.perf_series_quartile2,self.perf_series_quartile3 = MonteCarlo_statistics(self.returns)
         self.mean = self.stats[0]['mean']
         self.max = self.stats[0]['max']
@@ -91,12 +108,12 @@ def MonteCarlo_statistics(perf):
 
 #horizon in months
 #about 45 seconds for 1 million trials and 4 years
-def monte_carlo_simulation(mu,sigma,n_trials,horizon):
+def monte_carlo_simulation(mu,sigma,n_trials,horizon,weight):
     start_date = datetime.date.today()
     end_date = start_date + datetime.timedelta(horizon*365/12)
     trading_days = list(NYSE_tradingdays(start_date,end_date))
     n_days = len(trading_days)
-    returns = np.random.normal(mu,sigma,size=(n_trials,n_days))
+    returns = weight * np.random.normal(mu,sigma,size=(n_trials,n_days))
     return trading_days,returns
 
 def NYSE_tradingdays(a,b):
