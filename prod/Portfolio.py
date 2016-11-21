@@ -127,9 +127,7 @@ class Portfolio:
         exp_diff = np.mean(returns_port)-np.mean(returns_market)
         return exp_diff/sd_diff
     def get_exposures(self,weights):
-        funds = ["XLY", "XLP", "XLE", "XLF", "XLV", "XLI", "XLB", "XLK", "XLU"]
-        prices_factors = web.DataReader(funds, "yahoo", self.start_date - datetime.timedelta(1))["Close"]
-        returns_factors = prices_factors.pct_change()[1:len(prices_factors)] * 100
+        returns_factors = 100*pd.DataFrame.from_csv("returns_data.csv")["XLY", "XLP", "XLE", "XLF", "XLV", "XLI", "XLB", "XLK", "XLU"]
         returns_factors["Intercept"] = np.ones(len(returns_factors))
         A = np.array(returns_factors)
         grid = self.returns_grid.T

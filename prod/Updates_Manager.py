@@ -16,9 +16,10 @@ import os
 def start_manager_update_process(p,start_date):
     if os.path.isfile('./portfolio.txt') is False:
         # a  few requirements to set up the data pipeline
-        df = web.DataReader(['^GSPC','GLD'],'yahoo',datetime.datetime(2010, 1, 1))['Close']
+        indices  = ["^GSPC","XLY", "XLP", "XLE", "XLF", "XLV", "XLI", "XLB", "XLK", "XLU"]
+        df = web.DataReader(indices,'yahoo',datetime.datetime(2010, 1, 1))['Close']
         df = df.pct_change()[1:len(df)]
-        df.columns = ['^GSPC','GLD']
+        df.columns = indices
         df.to_csv("returns_data.csv")
         with open('portfolio.txt','wb') as f:
             pickle.dump([],f)
