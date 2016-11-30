@@ -23,14 +23,14 @@ class Simulation:
                 hist_returns = np.dot(weights.transpose(), portfolio.returns_grid)
                 self.mu = np.mean(hist_returns)
             else:
-                forecasts = np.array(forecasts.values())
+                forecasts = np.array(forecasts.values())/252
                 self.mu = weights.dot(forecasts)
         else:
             self.sigma = math.sqrt(portfolio.net_variance)
             if forecasts == 0:
                 self.mu = portfolio.net_expectation
             else:
-                forecasts = np.array(forecasts.values())
+                forecasts = np.array(forecasts.values())/252
                 self.mu = portfolio.weights.dot(forecasts)
 
         self.trading_days, self.returns = monte_carlo_simulation(self.mu, self.sigma, self.n_trials, self.horizon)
@@ -63,7 +63,7 @@ class Simulation:
             #25%
             return self.perf_series_quartile1
         elif quartile == 2:
-            #50% - median
+            #median
             return self.perf_series_quartile2
         elif quartile == 3:
             #75%
