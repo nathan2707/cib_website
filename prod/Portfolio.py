@@ -112,10 +112,10 @@ class Portfolio:
             std = (w * returns).sum(1).std()
             Y.append(ret)
             X.append(std)
-        coefs = np.polyfit(Y,X,2) #highest power first
-        curve = {"x2":coefs[0],"x":coefs[1],"b":coefs[2],"min_return":smallest_target,"max_return":biggest_target}
+        #coefs = np.polyfit(Y,X,2) #highest power first
+        curve = {"risks":X,"returns":Y,"min_return":smallest_target,"max_return":biggest_target}
         tangency_port = {'weights': dict(w_opt),'X':std_opt,'Y':ret_opt}
-        return (tangency_port,curve)
+        return {"tangency_port":tangency_port,"curve":curve}
 
     def compile_portfolio(self):
         in_prices = []
@@ -177,7 +177,7 @@ class Portfolio:
         w = np.array(w).T
         Y = grid.dot(w) * 100
         beta = np.linalg.lstsq(A, Y)[0]
-        beta = list(beta[1:-1])
+        beta = list(beta[0:-1])
         factors = ["Consumer Discretionary","Consumer Staples","Energy","Financials","Healthcare","Industrials","Materials",\
                    "Technology","Utilities"]
         return collections.OrderedDict(zip(factors, beta))
