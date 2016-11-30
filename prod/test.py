@@ -24,6 +24,11 @@ def test_monte_carlo():
     series = mc_sim.get_full_perf_quartile(1)
     return series
 
+def test_markowitz():
+    p = create_portfolio()
+    dict = p.get_markowitz_analysis()
+    dict
+
 def test_exposures():
     p = create_portfolio()
     dic = dict(zip(['AAPL','MSFT','AMZN'],[0.4,0.4,0.2]))

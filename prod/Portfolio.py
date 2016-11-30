@@ -34,6 +34,7 @@ class Portfolio:
             total_amount = total_amount + asset.in_price * asset.n_shares
         self.weights = np.array([(asset.in_price * asset.n_shares)/total_amount for asset in self.positions])
         self.cash = money - total_amount
+        self.initial_cash = money
         #historical
         self.historical_dates = all_dates
         self.historical_returns = np.dot(self.weights.transpose(),self.returns_grid)
@@ -127,7 +128,7 @@ class Portfolio:
             shares.append(self.positions[i].n_shares)
         compilation = Portfolio_Compiled(self.symbols,shares,self.start_date,in_prices,directions,self.historical_dates,self.cash)
         return compilation
-    def find_YTD_performance(self):
+    def find_YTD_and_monthly_performances(self):
         with open('portfolio.txt', 'rb') as f:
             all_portfolios = pickle.load(f)
         values = []
@@ -137,14 +138,19 @@ class Portfolio:
             values.extend(port.daily_values)
             i = i - 1
             if i < 0:
-                val_year_ago = 10000
+                val_year_ago = self.initial_cash
                 val_today = values[0]
+                val_month_ago = values[-25]
+                mnth_perf = (val_today - val_month_ago) / val_month_ago
                 ytd_perf = (val_today - val_year_ago) / val_year_ago
-                return ytd_perf
+                return {"YTD":ytd_perf,"Month":mnth_perf}
         val_year_ago = values[-253]
+        val_month_ago = values[-25]
         val_today = values[-1]
         ytd_perf = (val_today - val_year_ago) / val_year_ago
-        return ytd_perf
+        mnth_perf = (val_today - val_month_ago) / val_month_ago
+        return {"YTD":ytd_perf,"Month":mnth_perf}
+
     def get_alpha(self):
         df = pd.DataFrame.from_csv("returns_data.csv")
         prices_market = list(df['^GSPC'])[len(df)-252:len(df)]
@@ -153,7 +159,7 @@ class Portfolio:
             Rm = Rm * (1 + rm)
         Rm = Rm - 1
         risk_free_rate = .007
-        returns_cib = self.find_YTD_performance()
+        returns_cib = self.find_YTD_performance()["YTD"]
         beta = self.get_beta()
         alpha = returns_cib - risk_free_rate - (Rm - risk_free_rate) * beta
         return alpha
