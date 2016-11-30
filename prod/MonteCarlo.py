@@ -108,12 +108,12 @@ def MonteCarlo_statistics(perf):
 
 #horizon in months
 #about 45 seconds for 1 million trials and 4 years
-def monte_carlo_simulation(mu,sigma,n_trials,horizon,weight):
+def monte_carlo_simulation(mu,sigma,n_trials,horizon):
     start_date = datetime.date.today()
     end_date = start_date + datetime.timedelta(horizon*365/12)
     trading_days = list(NYSE_tradingdays(start_date,end_date))
     n_days = len(trading_days)
-    returns = weight * np.random.normal(mu,sigma,size=(n_trials,n_days))
+    returns = np.random.normal(mu,sigma,size=(n_trials,n_days))
     return trading_days,returns
 
 def NYSE_tradingdays(a,b):
