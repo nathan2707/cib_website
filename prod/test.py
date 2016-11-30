@@ -4,7 +4,7 @@ import MonteCarlo
 import pickle
 
 def main():
-    return test_stats()
+    return test_monte_carlo()
 
 def create_portfolio():
     start_date = datetime.datetime(2015,10,3)

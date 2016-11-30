@@ -161,7 +161,9 @@ class Portfolio:
     def get_information_ratio(self):
         df = pd.DataFrame.from_csv("returns_data.csv")
         returns_market = np.array(df.iloc[-254:-1]["^GSPC"]*100)
-        returns_port = self.historical_returns[-254:-1]
+        returns_port = self.historical_returns[-254:-1]*100
+        print(np.mean(returns_port))
+        print(np.mean(returns_market))
         sd_diff = np.std(returns_port-returns_market)
         exp_diff = np.mean(returns_port)-np.mean(returns_market)
         return exp_diff/sd_diff

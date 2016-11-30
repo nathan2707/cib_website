@@ -1,8 +1,6 @@
 import Portfolio
 from dateutil import rrule
 import datetime
-from datetime import timedelta as td
-import time
 import math
 import numpy as np
 import pandas as pd
@@ -44,6 +42,7 @@ class Simulation:
         self.quartile1 = self.stats[0]['25%']
         self.quartile2 = self.stats[0]['50%']
         self.quartile3 = self.stats[0]['75%']
+
     
     #Asking what is the probability to perform better than a given goal or worst than a given limit
     #simply the cdf of the distribution of final performance obtained from monte carlo simulation
@@ -85,26 +84,57 @@ class Simulation:
     def get_third_q(self):
         return self.quartile3
 
+    def get_max_drawdown_first_q(self):
+        min(pd.Series(self.quartile1).pct_change()[1:]) * 100
+
+    def get_max_drawdup_first_q(self):
+        max(pd.Series(self.quartile1).pct_change()[1:]) * 100
+
+    def get_max_drawdown_second_q(self):
+        min(pd.Series(self.quartile2).pct_change()[1:]) * 100
+
+    def get_max_drawdup_second_q(self):
+        max(pd.Series(self.quartile2).pct_change()[1:]) * 100
+
+    def get_max_drawdown_third_q(self):
+        min(pd.Series(self.quartile3).pct_change()[1:]) * 100
+
+    def get_max_drawdup_third_q(self):
+        max(pd.Series(self.quartile3).pct_change()[1:]) * 100
+
 
 #returns statistics for the MC simulation (complete track of 75th,median,25th quartiles; final perf of mean,max,min,sd);
+# returns statistics for the MC simulation (complete track of 75th,median,25th quartiles; final perf of mean,max,min,sd);
 def MonteCarlo_statistics(perf):
-    #equity = (1+0.01r1)(1+0.01r2)...(1+0.01rn)
-    final = 1+(perf/100)
-    final = np.prod(final,axis=1)
-    
+    # equity = (1+0.01r1)(1+0.01r2)...(1+0.01rn)
+    final = 1 + (perf / 100)
+    final = np.prod(final, axis=1)
+
     final = pd.DataFrame(final)
     info = final.describe()
     quartile1 = info[0]['25%']
     quartile2 = info[0]['50%']
     quartile3 = info[0]['75%']
-    index_quartile1 = final[(quartile1-0.001*quartile1<final) & (quartile1+0.001*quartile1>final)].first_valid_index()
-    index_quartile2 = final[(quartile2-0.001*quartile2<final) & (quartile2+0.001*quartile2>final)].first_valid_index()
-    index_quartile3 = final[(quartile3-0.001*quartile3<final) & (quartile3+0.001*quartile3>final)].first_valid_index()
-    
-    perf_series_quartile1 = perf[index_quartile1]
-    perf_series_quartile2 = perf[index_quartile2]
-    perf_series_quartile3 = perf[index_quartile3]
-    return final,info,perf_series_quartile1,perf_series_quartile2,perf_series_quartile3
+    index_quartile1 = final[
+        (quartile1 - 0.001 * quartile1 < final) & (quartile1 + 0.001 * quartile1 > final)].first_valid_index()
+    index_quartile2 = final[
+        (quartile2 - 0.001 * quartile2 < final) & (quartile2 + 0.001 * quartile2 > final)].first_valid_index()
+    index_quartile3 = final[
+        (quartile3 - 0.001 * quartile3 < final) & (quartile3 + 0.001 * quartile3 > final)].first_valid_index()
+
+    perf_series_quartile1 = roll_prod(perf[index_quartile1])
+    perf_series_quartile2 = roll_prod(perf[index_quartile2])
+    perf_series_quartile3 = roll_prod(perf[index_quartile3])
+    return final, info, perf_series_quartile1, perf_series_quartile2, perf_series_quartile3
+
+
+def roll_prod(array):
+    new_array = [1]
+    roll = 1
+    for el in array:
+        roll = roll * (1 + el / 100)
+        new_array.append(roll)
+    return new_array
 
 #horizon in months
 #about 45 seconds for 1 million trials and 4 years
