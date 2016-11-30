@@ -27,7 +27,10 @@ def test_monte_carlo():
 def test_markowitz():
     p = create_portfolio()
     dict = p.get_markowitz_analysis()
-    dict
+    curve = dict["curve"]
+    risks = curve["X"]
+    returns = curve["Y"]
+    return risks,returns
 
 def test_exposures():
     p = create_portfolio()

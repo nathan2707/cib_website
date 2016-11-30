@@ -86,18 +86,24 @@ class Portfolio:
         return self.net_expectation
     def get_tickers(self):
         return self.symbols
+
+    def yearly_expected_ret(array):
+        roll = 1
+        for el in array:
+            roll = roll * (1 + el / 100)
+        return (roll - 1)*100
     #ordered dictionary of forecast for expected returns: key = ticker, value = weight (out of 1)
-    def get_markowitz_analysis(self,expected_rets=False):
+    def get_markowitz_analysis(self,forecasts=0):
         start_index = len(self.historical_returns) - 253
         end_index = len(self.historical_returns) - 1
-        return_grid = self.returns_grid[:, start_index:end_index].T
-        returns = pd.DataFrame(return_grid) * 100
-        avgs = [np.mean(returns[col]) for col in returns.columns]
-        cov_mat = pd.DataFrame(self.covariance_matrix)
-        if expected_rets == False:
+        return_grid = 100 * self.returns_grid[:, start_index:end_index].T
+        returns = pd.DataFrame(return_grid)
+        avgs = [self.yearly_expected_ret(returns[col]) for col in returns.columns]
+        cov_mat = pd.DataFrame(np.cov(return_grid.T))
+        if forecasts == 0:
             avg_rets = pd.Series(avgs, index=returns.columns)
         else:
-            avg_rets = pd.Series(expected_rets.values(), index=returns.columns)
+            avg_rets = pd.Series(forecasts.values(), index=returns.columns)
         w_opt = pfopt.tangency_portfolio(cov_mat, avg_rets, allow_short=False)
         ret_opt = (w_opt * avg_rets).sum()
         std_opt = (w_opt * returns).sum(1).std()
